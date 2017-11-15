@@ -1,9 +1,9 @@
 
-const int MAX_MARCHING_STEPS = 100;
+const int MAX_MARCHING_STEPS = 255;
 const float MIN_DIST = 0.0;
 const float MAX_DIST = 100.0;
 const float EPSILON = 0.0001;
-const int SAMPLES = 32;
+const int SAMPLES = 36;
 const float PI = 3.1415926535;
 
 float sphereSDF(vec2 samplePoint,vec2 c,float r) {
@@ -48,18 +48,6 @@ vec2 sceneSDF(vec2 samplePoint) {
 
 
 
-bool is_total_reflection(vec2 i,vec2 n,float refrac){
-  float cosp = dot(i,n);
-  float cosp22 = 1.0 - refrac*refrac*(1.0 - cosp*cosp);
-  return cosp22<0.0;
-}
-
-vec2 refractR(vec2 i,vec2 n,float refrac){
-  float cosp = dot(i,n);
-  float cosp22 = 1.0 - refrac*refrac*(1.0 - cosp*cosp);
-  float sc = cosp*refrac - sqrt(cosp22);
-  return i * refrac + sc * n;
-}
 
 vec2 DF_vector(vec2 p)
 {
@@ -77,18 +65,18 @@ vec3 ray_march(in vec2 org,in vec2 odir) {
     for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
         float dist = abs(r.x);
         if (dist < EPSILON) {
+            total += vec3(r.y);
+            if(r.y>EPSILON) return total;
              vec2 n = DF_vector(org+offset);
              float cosq = dot(n,dir);
 
-             float refrac = cosq > 0.0 ? 1.0/1.2:1.2;
-             n = cosq > 0.0 ? n : -n;
-             if(!is_total_reflection(dir, n, refrac))
-             {
-                dir = refractR(dir, n, refrac);
-                offset += dir*EPSILON*10.0;
-                total += vec3(r.y);
-             }
-			       else return total+vec3(r.y);
+             float refrac = cosq > 0.0 ? 1.2: 1.0/1.2;
+             n = cosq > 0.0 ? -n : n;
+                dir = refract(dir, n, refrac);
+            if(dot(dir,dir)<EPSILON)
+			      dir = reflect(dir,n);
+             offset += dir*1e-3;
+
         }
         offset += dist*dir;
         t += dist;
